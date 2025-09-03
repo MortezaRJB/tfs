@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    آپلود فایل جدید
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="upload-form">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label class="form-label">انتخاب فایل:</label>
+                        <div class="file-drop-zone" id="drop-zone">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <p class="mb-2">فایل را اینجا بکشید یا کلیک کنید</p>
+                            <input type="file" name="file" id="id_file" class="form-control" required>
+                        </div>
+                        <small class="text-muted">حداکثر اندازه فایل: 10 مگابایت</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">مدت زمان انقضا:</label>
+                            {{ form.expiry_minutes }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">حداکثر تعداد دانلود:</label>
+                            {{ form.max_downloads }}
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="upload-btn">
+                            <i class="fas fa-upload me-2"></i>
+                            آپلود فایل
+                        </button>
+                        
+                        <div class="progress mt-3" id="upload-progress" style="display: none;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card text-center card-hover">
+                    <div class="card-body">
+                        <i class="fas fa-files-o fa-2x text-primary mb-2"></i>
+                        <h5>{{ total_files }}</h5>
+                        <p class="text-muted">کل فایل‌ها</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card text-center card-hover">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                        <h5>{{ active_files }}</h5>
+                        <p class="text-muted">فایل‌های فعال</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // File drag and drop functionality
+    const dropZone = $('#drop-zone');
+    const fileInput = $('#id_file');
+    
+    dropZone.on('dragover', function(e) {
+        e.preventDefault();
+        dropZone.addClass('dragover');
+    });
+    
+    dropZone.on('dragleave', function(e) {
+        e.preventDefault();
+        dropZone.removeClass('dragover');
+    });
+    
+    dropZone.on('drop', function(e) {
+        e.preventDefault();
+        dropZone.removeClass('dragover');
+        
+        const files = e.originalEvent.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput[0].files = files;
+            updateFileDisplay(files[0]);
+        }
+    });
+    
+    dropZone.on('click', function() {
+        fileInput.click();
+    });
+    
+    fileInput.on('change', function() {
+        if (this.files.length > 0) {
+            updateFileDisplay(this.files[0]);
+        }
+    });
+    
+    function updateFileDisplay(file) {
+        /* const size = (file.size / 1024 / 1024).toFixed(2);
+        dropZone.html(`
+            <i class="fas fa-file fa-2x text-success mb-2"></i>
+            <p class="mb-1"><strong>${file.name}</strong></p>
+            <small class="text-muted">${size} MB</small>
+        `); */
+        const size = (file.size / 1024 / 1024).toFixed(2);
+        dropZone.find("p, small, i").remove(); // فقط متن‌ها رو پاک کن
+        dropZone.append(`
+        <i class="fas fa-file fa-2x text-success mb-2"></i>
+        <p class="mb-1"><strong>${file.name}</strong></p>
+        <small class="text-muted">${size} MB</small>
+    `);
+    }
+    
+    // Form submission with progress
+    $('#upload-form').on('submit', function(e) {
+        if (!fileInput[0].files.length) {
+            alert('لطفاً یک فایل انتخاب کنید');
+            e.preventDefault();
+            return;
+        }
+        
+        $('#upload-btn').prop('disabled', true).html(
+            '<i class="fas fa-spinner fa-spin me-2"></i>در حال آپلود...'
+        );
+        $('#upload-progress').show();
+        
+        // Simulate progress (in real implementation, use XMLHttpRequest for real progress)
+        let progress = 0;
+        const progressInterval = setInterval(function() {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            $('.progress-bar').css('width', progress + '%');
+        }, 200);
+        
+        // Stop simulation after form submission
+        setTimeout(() => clearInterval(progressInterval), 1000);
+    });
+});
+</script>
+{% endblock %}

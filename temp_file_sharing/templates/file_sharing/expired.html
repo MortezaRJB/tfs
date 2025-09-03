@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}فایل منقضی شده{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6 mx-auto text-center">
+        <div class="card shadow border-warning">
+            <div class="card-body p-5">
+                <i class="fas fa-exclamation-triangle fa-4x text-warning mb-4"></i>
+                <h3 class="text-warning mb-3">فایل منقضی شده</h3>
+                <p class="lead mb-4">
+                    متأسفانه فایل <strong>{{ temp_file.original_filename }}</strong> 
+                    منقضی شده و دیگر قابل دسترسی نیست.
+                </p>
+                
+                <div class="row text-muted mb-4">
+                    <div class="col-6">
+                        <small>تاریخ آپلود:</small><br>
+                        <strong>{{ temp_file.created_at|date:"Y/m/d H:i" }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small>تاریخ انقضا:</small><br>
+                        <strong>{{ temp_file.expires_at|date:"Y/m/d H:i" }}</strong>
+                    </div>
+                </div>
+                
+                <a href="{% url 'home' %}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>
+                    بازگشت به خانه
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

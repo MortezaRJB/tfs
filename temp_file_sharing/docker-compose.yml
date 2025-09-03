@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  # Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: temp_files_db
+    environment:
+      - POSTGRES_DB=temp_files_db
+      - POSTGRES_USER=temp_files_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temp_files_user -d temp_files_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: temp_files_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Django Web Application
+  web:
+    build: .
+    container_name: temp_files_web
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile - temp_file_sharing.wsgi:application"
+    volumes:
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=False
+      - DB_HOST=db
+      - DB_NAME=temp_files_db
+      - DB_USER=temp_files_user
+      - DB_PASSWORD=password
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY='django-insecure-1qm0vqf8qy6lj8-+btah8&1%35ngz%87iu1r99fzs-b1e!!4qb'
+      - ALLOWED_HOSTS=[*]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Worker
+  celery:
+    build: .
+    container_name: temp_files_celery
+    command: celery -A temp_file_sharing worker -l info
+    volumes:
+      - ./media:/app/media
+      - ./logs:/app/logs
+    environment:
+      - DEBUG=False
+      - DB_HOST=db
+      - DB_NAME=temp_files_db
+      - DB_USER=temp_files_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat (اصلاح شده)
+  
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: temp_files_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites:/etc/nginx/sites-available
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  celerybeat_data:
+
+networks:
+  default:
+    name: temp_files_network
