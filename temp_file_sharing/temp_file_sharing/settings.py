@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'temp_file_sharing',
     'corsheaders',
-    'django_celery_beat',
+    #'django_celery_beat',
     'file_sharing',
 ]
 
